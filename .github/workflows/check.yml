@@ -98,8 +98,9 @@ jobs:
           target_version=${{ steps.check.outputs.latest_shortversion }}
           tar xvf ${{ steps.files.outputs.ap }} meta-data/fota.zip --strip-components=1
           [[ -e fota.zip ]] && unzip -P fotatest1234 -j fota.zip META/misc_info.txt -d miscs
-          tar xvf ${{ steps.files.outputs.ap }} recovery.img.lz4
-          lz4 -dm recovery.img.lz4
+          tar xvf ${{ steps.files.outputs.ap }} --wildcards --no-anchored 'recovery.img*'
+          [[ -e recovery.img.lz4 ]] && lz4 -dm recovery.img.lz4
+          [[ -e recovery.img.lz4 ]] && lz4_extension=".lz4" || lz4_extension=""
           extract-ikconfig recovery.img > miscs/${{ github.event.inputs.MODEL }}_defconfig
           cd tmp
           unpackbootimg -i ../recovery.img >> ../miscs/recoveryimg.args
@@ -108,9 +109,9 @@ jobs:
           cd ../miscs
           zip -r ../$target_version-miscs.zip *
           cd ..
-          mv recovery.img.lz4 $target_version-stock_recovery.img.lz4
+          mv recovery.img$lz4_extension $target_version-stock_recovery.img$lz4_extension
           ls
-          echo ::set-output name=recovery::`find -name $target_version-stock_recovery.img.lz4`
+          echo ::set-output name=recovery::`find -name $target_version-stock_recovery.img$lz4_extension`
           echo ::set-output name=miscs::`find -name $target_version-miscs.zip`
 
       - name: Update current version
