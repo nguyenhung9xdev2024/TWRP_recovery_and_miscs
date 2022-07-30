@@ -50,6 +50,8 @@ jobs:
           sudo wget -O /usr/bin/unpackbootimg https://wbn.ro/unpackbootimg && sudo chmod +x /usr/bin/unpackbootimg
           sudo wget -O /usr/bin/extract-ikconfig https://wbn.ro/extract-ikconfig && sudo chmod +x /usr/bin/extract-ikconfig
           sudo wget -O /usr/bin/samfirm https://github.com/jesec/SamFirm.NET/releases/latest/download/linux-x64 && sudo chmod +x /usr/bin/samfirm
+          aikurl=$(wget -qO- "https://forum.xda-developers.com/showthread.php?t=2073775" | cat | grep "AIK-Linux-v" | cut -d'"' -f2 | grep http | head -1)
+          sudo wget -O aik.tar.gz "$aikurl" && tar xvf aik.tar.gz && sudo mv AIK-Linux/* /usr/bin/ && rm -rf AIK-Linux
 
       - name: Fetch firmware
         if: steps.check.outputs.need_update == 1
@@ -89,7 +91,7 @@ jobs:
         run: |
           target_device=`echo ${{ github.event.inputs.MODEL }} | cut -d'-' -f2`
           target_version=${{ steps.check.outputs.latest_shortversion }}
-          mkdir -p $target_version miscs tmp
+          mkdir -p miscs/ramdisk/system/etc tmp
           
       - name: Extract images/files from AP, dump miscs and create zips
         if: steps.check.outputs.need_update == 1
@@ -104,9 +106,13 @@ jobs:
           extract-ikconfig recovery.img > miscs/${{ github.event.inputs.MODEL }}_defconfig
           cd tmp
           unpackbootimg -i ../recovery.img >> ../miscs/recoveryimg.args
+          unpackimg.sh --local --nosudo ../recovery.img
           [[ -e recovery.img-dtb ]] && cp recovery.img-dtb ../miscs/dtb
           [[ -e recovery.img-recovery_dtbo ]] && cp recovery.img-recovery_dtbo ../miscs/recovery_dtbo
-          cd ../miscs
+          cd ramdisk
+          rdsk=(*.rc prop.default lib system/etc/recovery.fstab system/etc/ueventd.rc vendor)
+          for i in ${rdsk[@]}; do [[ -e $i ]] && cp -r $i ../../miscs/ramdisk/$i; done
+          cd ../../miscs
           zip -r ../$target_version-miscs.zip *
           cd ..
           mv boot.img$lz4_extension $target_version-stock_boot.img$lz4_extension
