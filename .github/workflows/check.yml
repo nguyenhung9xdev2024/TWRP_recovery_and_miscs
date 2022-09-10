@@ -47,8 +47,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y liblz4-tool zip
-          sudo wget -O /usr/bin/unpackbootimg https://wbn.ro/unpackbootimg && sudo chmod +x /usr/bin/unpackbootimg
-          sudo wget -O /usr/bin/extract-ikconfig https://wbn.ro/extract-ikconfig && sudo chmod +x /usr/bin/extract-ikconfig
+          sudo wget -O /usr/bin/unpackbootimg https://corsica.nu/unpackbootimg && sudo chmod +x /usr/bin/unpackbootimg
+          sudo wget -O /usr/bin/extract-ikconfig https://corsica.nu/extract-ikconfig && sudo chmod +x /usr/bin/extract-ikconfig
           sudo wget -O /usr/bin/samfirm https://github.com/jesec/SamFirm.NET/releases/latest/download/linux-x64 && sudo chmod +x /usr/bin/samfirm
           aikurl=$(wget -qO- "https://forum.xda-developers.com/showthread.php?t=2073775" | cat | grep "AIK-Linux-v" | cut -d'"' -f2 | grep http | head -1)
           sudo wget -O aik.tar.gz "$aikurl" && tar xvf aik.tar.gz && sudo mv AIK-Linux/* /usr/bin/ && rm -rf AIK-Linux
