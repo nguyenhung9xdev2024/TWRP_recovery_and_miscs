@@ -65,9 +65,7 @@ jobs:
         if: steps.check.outputs.need_update == 1
         id: files
         run: |
-          echo ::set-output name=bl::`find -name BL*`
           echo ::set-output name=ap::`find -name AP*`
-          echo ::set-output name=cp::`find -name CP*`
           echo ::set-output name=csc::`find -name HOME_CSC*`
 
       - name: Check downloaded firmware version
@@ -75,10 +73,8 @@ jobs:
         run: |
           version_short=`echo ${{ steps.files.outputs.ap }} | cut -d'_' -f3`
           version_csc=`echo ${{ steps.files.outputs.csc }} | cut -d'_' -f5`
-          version_modem=`echo ${{ steps.files.outputs.cp }} | cut -d'_' -f3`
           [[ $version_short == ${{ steps.check.outputs.latest_shortversion }} ]] && echo PDA version: $version_short >> versions.txt
           [[ $version_csc == ${{ steps.check.outputs.latest_cscversion }} ]] && echo CSC version: $version_csc >> versions.txt
-          [[ $version_modem == ${{ steps.check.outputs.latest_modemversion }} ]] && echo Modem version: $version_modem >> versions.txt
 
       - name: Print available disk space
         if: steps.check.outputs.need_update == 1
