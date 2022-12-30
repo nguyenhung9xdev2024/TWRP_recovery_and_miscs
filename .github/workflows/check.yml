@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -36,14 +36,14 @@ jobs:
           latest_modem=`echo $latest | cut -d'/' -f3`
           current=`cat current.${{ github.event.inputs.MODEL }}` || need_update=1
           [[ $latest != $current ]] && need_update=1
-          echo ::set-output name=latest_version::$latest
-          echo ::set-output name=latest_shortversion::$latest_short
-          echo ::set-output name=latest_cscversion::$latest_csc
-          echo ::set-output name=latest_modemversion::$latest_modem
-          echo ::set-output name=need_update::$need_update
+          echo "latest_version=$latest" >> $GITHUB_ENV
+          echo "latest_shortversion=$latest_short" >> $GITHUB_ENV
+          echo "latest_cscversion=$latest_csc" >> $GITHUB_ENV
+          echo "latest_modemversion=$latest_modem" >> $GITHUB_ENV
+          echo "need_update=$need_update" >> $GITHUB_ENV
 
       - name: Install dependencies
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           sudo apt-get update
           sudo apt-get install -y liblz4-tool zip
@@ -54,49 +54,49 @@ jobs:
           sudo wget -O aik.tar.gz "$aikurl" && tar xvf aik.tar.gz && sudo mv AIK-Linux/* /usr/bin/ && rm -rf AIK-Linux
 
       - name: Fetch firmware
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: samfirm -m ${{ github.event.inputs.MODEL }} -r ${{ github.event.inputs.REGION }}
 
       - name: Print directory structure
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: ls -la ${{ github.event.inputs.MODEL }}_${{ github.event.inputs.REGION }}
 
       - name: Get path of files
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         id: files
         run: |
-          echo ::set-output name=ap::`find -name AP*`
-          echo ::set-output name=csc::`find -name HOME_CSC*`
+          echo "ap=`find -name AP*`" >> $GITHUB_ENV
+          echo "csc=`find -name HOME_CSC*`" >> $GITHUB_ENV
 
       - name: Check downloaded firmware version
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
-          version_short=`echo ${{ steps.files.outputs.ap }} | cut -d'_' -f3`
-          version_csc=`echo ${{ steps.files.outputs.csc }} | cut -d'_' -f5`
-          [[ $version_short == ${{ steps.check.outputs.latest_shortversion }} ]] && echo PDA version: $version_short >> versions.txt
-          [[ $version_csc == ${{ steps.check.outputs.latest_cscversion }} ]] && echo CSC version: $version_csc >> versions.txt
+          version_short=`echo ${{ env.ap }} | cut -d'_' -f3`
+          version_csc=`echo ${{ env.csc }} | cut -d'_' -f5`
+          [[ $version_short == ${{ env.latest_shortversion }} ]] && echo PDA version: $version_short >> versions.txt
+          [[ $version_csc == ${{ env.latest_cscversion }} ]] && echo CSC version: $version_csc >> versions.txt
 
       - name: Print available disk space
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           pwd
           sudo df -h
           
       - name: Create zip environment
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           target_device=`echo ${{ github.event.inputs.MODEL }} | cut -d'-' -f2`
-          target_version=${{ steps.check.outputs.latest_shortversion }}
+          target_version=${{ env.latest_shortversion }}
           mkdir -p miscs/ramdisk/system/etc tmp
           
       - name: Extract images/files from AP, dump miscs and create zips
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         id: releases
         run: |
-          target_version=${{ steps.check.outputs.latest_shortversion }}
-          tar xvf ${{ steps.files.outputs.ap }} meta-data/fota.zip --strip-components=1
+          target_version=${{ env.latest_shortversion }}
+          tar xvf ${{ env.ap }} meta-data/fota.zip --strip-components=1
           [[ -e fota.zip ]] && unzip -P fotatest1234 -j fota.zip META/misc_info.txt -d miscs
-          tar xvf ${{ steps.files.outputs.ap }} --wildcards --no-anchored 'recovery.img*' 'boot.img*'
+          tar xvf ${{ env.ap }} --wildcards --no-anchored 'recovery.img*' 'boot.img*'
           [[ -e recovery.img.lz4 ]] && lz4 -dm recovery.img.lz4
           [[ -e recovery.img.lz4 ]] && lz4_extension=".lz4" || lz4_extension=""
           extract-ikconfig recovery.img > miscs/${{ github.event.inputs.MODEL }}_defconfig
@@ -114,23 +114,23 @@ jobs:
           mv boot.img$lz4_extension $target_version-stock_boot.img$lz4_extension
           mv recovery.img$lz4_extension $target_version-stock_recovery.img$lz4_extension
           ls
-          echo ::set-output name=boot::`find -name $target_version-stock_boot.img$lz4_extension`
-          echo ::set-output name=recovery::`find -name $target_version-stock_recovery.img$lz4_extension`
-          echo ::set-output name=miscs::`find -name $target_version-miscs.zip`
+          echo "boot=`find -name $target_version-stock_boot.img$lz4_extension`" >> $GITHUB_ENV
+          echo "recovery=`find -name $target_version-stock_recovery.img$lz4_extension`" >> $GITHUB_ENV
+          echo "miscs=`find -name $target_version-miscs.zip`" >> $GITHUB_ENV
 
       - name: Update current version
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git pull origin ${{github.ref}} --ff-only
-          echo ${{ steps.check.outputs.latest_version }} > current.${{ github.event.inputs.MODEL }}
+          echo ${{ env.latest_version }} > current.${{ github.event.inputs.MODEL }}
           git add current.${{ github.event.inputs.MODEL }}
-          git commit -m "${{ github.event.inputs.MODEL }}: ${{ steps.check.outputs.latest_version }}"
-          git tag ${{ steps.check.outputs.latest_shortversion }}
+          git commit -m "${{ github.event.inputs.MODEL }}: ${{ env.latest_version }}"
+          git tag ${{ env.latest_shortversion }}
 
       - name: Push changes to repo
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         uses: ad-m/github-push-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
@@ -138,14 +138,14 @@ jobs:
           tags: true
 
       - name: Upload release assets
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
           body_path: versions.txt
-          tag_name: ${{ steps.check.outputs.latest_shortversion }}
+          tag_name: ${{ env.latest_shortversion }}
           files: |
-            ${{ steps.releases.outputs.boot }}
-            ${{ steps.releases.outputs.recovery }}
-            ${{ steps.releases.outputs.miscs }}
+            ${{ env.boot }}
+            ${{ env.recovery }}
+            ${{ env.miscs }}
