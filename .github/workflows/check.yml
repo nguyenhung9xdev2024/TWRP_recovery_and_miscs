@@ -126,7 +126,7 @@ jobs:
         if: env.need_update == 1
         uses: ad-m/github-push-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tags: true
 
@@ -134,7 +134,7 @@ jobs:
         if: env.need_update == 1
         uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body_path: versions.txt
           tag_name: ${{ env.latest_shortversion }}
